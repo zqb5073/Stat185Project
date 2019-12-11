@@ -1,0 +1,49 @@
+---
+title: "Data Science Co-authorship Analysis"
+author: "Zachary Beisler"
+date: "12/11/2019"
+output: html_document
+---
+# Data Sciences Co-authorship Analysis
+
+
+```{r setup, include=FALSE}
+rm(list = ls())
+
+library(dplyr)
+library(tidyverse)
+library(igraph)
+
+Edges <- read.table("Adjacency.txt", sep = '\t',header = FALSE)
+```
+
+## R Markdown
+
+```{r}
+Reverse_Edges <- Edges %>% select(V1 = V2, V2 = V1)
+
+Degrees <- rbind(Reverse_Edges, Edges) %>% 
+  group_by(V1) %>% 
+  summarise(degree = n()) %>%
+  arrange(desc(degree))
+
+Degrees
+```
+
+```{r}
+ggplot(Degrees, aes(x = degree)) + geom_density(color="blue", fill="blue", alpha=0.6) + ggtitle("Degree Distribution") + xlab("Degree") + ylab("Density")
+```
+
+```{r}
+graph = graph_from_data_frame(Edges, directed=FALSE)
+ShortestPaths <- as.data.frame(t(shortest.paths(graph, v=524, mode = "in"))) %>% 
+  select(Length = `10745`) %>%
+  filter(is.finite(Length))
+  
+ShortestPaths %>% ggplot(aes(x=Length)) + geom_histogram(color="blue", fill="blue", alpha=0.6, binwidth=1) + ggtitle("Histogram of Shortest Path Length to Node 524") + ylab("Count")
+```
+
+```{r}
+ShortestPaths %>% 
+  summarise(Average_Length = mean(Length))
+```
