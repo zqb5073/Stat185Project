@@ -6,6 +6,7 @@ output: html_document
 ---
 # Finding Erdos-like Researchers Data Science Co-authorhip Graphs
 
+### [https://zqb5073.github.io/Stat185Project/](Github Pages Link) 
 
 ```{r setup, include=FALSE}
 rm(list = ls())
