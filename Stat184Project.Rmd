@@ -4,7 +4,7 @@ author: "Zachary Beisler"
 date: "12/11/2019"
 output: html_document
 ---
-# Data Sciences Co-authorship Analysis
+# Finding Erdos-like Researchers Data Science Co-authorhip Graphs
 
 
 ```{r setup, include=FALSE}
@@ -13,37 +13,116 @@ rm(list = ls())
 library(dplyr)
 library(tidyverse)
 library(igraph)
-
-Edges <- read.table("Adjacency.txt", sep = '\t',header = FALSE)
 ```
+
+```{r}
+DBLP1 <- read.table("DBLP1.txt", sep = '\t',header = FALSE)
+DBLP2 <- read.table("DBLP2.txt", sep = '\t',header = FALSE)
+
+print("--- DBLP1 ---")
+glimpse(DBLP1)
+
+print("--- DBLP2 ---")
+glimpse(DBLP2)
+```
+
+Here we load two graph datasets, taken from [here](https://www.cs.utexas.edu/~xmao/coauthorship). We will be looking for what I will call "Erdos-like" nodes in the two datasets. Paul Erdos was a famous mathematician who, among his mathematical works, is well-known for having authored/co-authored many important papers with many other proilifc mathematicians. Becuase of this, if you construct a graph where the nodes are authors of math research papers and the edges indicate that two authors have co-authored a paper together, most other authors have a shortest path length to Erdos of less than 6. In this project, I will attempt to find authors of data science papers that share this Erdos-like characteristic. 
 
 ## R Markdown
 
 ```{r}
-Reverse_Edges <- Edges %>% select(V1 = V2, V2 = V1)
 
-Degrees <- rbind(Reverse_Edges, Edges) %>% 
-  group_by(V1) %>% 
-  summarise(degree = n()) %>%
-  arrange(desc(degree))
+compute_degrees <- function(graph_df){
+  Reverse_Edges <- graph_df %>% select(V1 = V2, V2 = V1)
 
-Degrees
-```
-
-```{r}
-ggplot(Degrees, aes(x = degree)) + geom_density(color="blue", fill="blue", alpha=0.6) + ggtitle("Degree Distribution") + xlab("Degree") + ylab("Density")
-```
-
-```{r}
-graph = graph_from_data_frame(Edges, directed=FALSE)
-ShortestPaths <- as.data.frame(t(shortest.paths(graph, v=524, mode = "in"))) %>% 
-  select(Length = `10745`) %>%
-  filter(is.finite(Length))
+  Degrees <- rbind(Reverse_Edges, graph_df) %>% 
+    group_by(V1) %>% 
+    summarise(Degree = n()) %>%
+    arrange(desc(Degree))
   
-ShortestPaths %>% ggplot(aes(x=Length)) + geom_histogram(color="blue", fill="blue", alpha=0.6, binwidth=1) + ggtitle("Histogram of Shortest Path Length to Node 524") + ylab("Count")
+  return(Degrees)
+}
+
+DBLP1_degrees <- compute_degrees(DBLP1)
+DBLP2_degrees <- compute_degrees(DBLP2)
+DBLP1_degrees
 ```
+Here is the function for computing the degree of each node in the dataset. Note that the datasets are anonymized, so that instead of the author's name each node is a unique identifier. The dataset is in the form of an edge list, so that each row is two columns: the starting node and the ending node. Because co-authorship is not directed, we have to reverse the dataset and then do a union (rbind()) to relfect each edge both ways. After this we can group on the originiating node and simply count the connections that it makes.
 
 ```{r}
-ShortestPaths %>% 
-  summarise(Average_Length = mean(Length))
+degree_distribution <- function(Degrees, show_max=TRUE){
+  plot <- ggplot(Degrees, aes(x = Degree)) + geom_density(color="blue", fill="blue", alpha=0.6) + ggtitle("Degree Distribution") + ylab("Density")
+
+  if(show_max){
+    highest_degree <- max(Degrees$Degree)
+    plot <- plot + geom_vline(aes(xintercept=highest_degree), color="purple") + geom_text(aes(x=highest_degree - 50, y=0.12, label=paste("Maximum Degree: ", as.character(highest_degree))), color="purple")
+  }
+  
+  return(plot)
+}
+
+degree_distribution(DBLP1_degrees)
 ```
+
+This grap above depicts the degree distribution for the DPLB1 graph dataset. Below is a graph that compares the distributions between the two datasets:
+
+```{r}
+Both_degrees <- DBLP1_degrees %>% 
+  mutate(Dataset = "DBLP1") %>% 
+  rbind(DBLP2_degrees %>% mutate(Dataset = "DBLP2"))
+
+Both_degrees %>% ggplot(aes(x = Degree, color=Dataset, fill=Dataset)) + facet_grid(cols=vars(Dataset)) + geom_density(alpha=0.2) + ggtitle("Degree Distribution Comparison") + ylab("Density")
+
+```
+
+The comparison shows that the degree distribution for each of the two datasets is essentially the same, which supports the idea that co-authorship graphs are the same across fields. This lead mes to believe that there will be instances of Erdos-like nodes in each of the datasets.
+
+The id of the node with maximum degree in the DBLP1 dataset is node 524. I will construct a histogram of shortest path lengths to this node to check if it exhibits Erdos-like behaviour; that is if shortest path lengths are generally bounded above by a small constant.
+
+```{r}
+DBLP1_graph <- graph_from_data_frame(DBLP1, directed=FALSE)
+DBLP2_graph <- graph_from_data_frame(DBLP2, directed=FALSE)
+
+ComputeShortestPaths <- function(graph, node){
+  ShortestPaths <- as.data.frame(t(shortest.paths(graph, v=node, mode = "in")))
+  
+  col_name = colnames(ShortestPaths)[1]
+  
+  ShortestPaths <- ShortestPaths %>%
+    select(Length = col_name) %>%
+    filter(is.finite(Length))
+  return(ShortestPaths)
+}
+  
+Paths_524 <- ComputeShortestPaths(DBLP1_graph, 524)
+
+Paths_524 %>% ggplot(aes(x=Length)) + geom_histogram(color="blue", fill="blue", alpha=0.6, binwidth=1) + ggtitle("Histogram of Shortest Path Length to Node 524") + ylab("Count")
+```
+
+From the graph above it seems that node 524 is indeed Erdos-like, and its shortest paths are generally bounded above by 8. To illustrate what an Erdos-like node looks like in comparison to a random non Erdos-like node, I will plot the shortest path distributions of node 524 and node 957 together below:
+
+```{r}
+Paths_957 <- ComputeShortestPaths(DBLP1_graph, 957)
+
+Paths_524 %>% 
+  mutate(Node = "524") %>%
+  rbind(Paths_957 %>% mutate(Node = "957")) %>%
+  ggplot(aes(x=Length, fill=Node, color=Node)) + geom_histogram(alpha=0.6, binwidth=1) + ggtitle("Comparison of Shortest Path Histograms") + ylab("Count")
+
+```
+
+Because this is a highly connected graph, node 957's path length distribution is still centered around a small number. However, node 524's distribution has a noticably lower centering point. We can quantify this difference by looking at the mean path length for each of the nodes.
+
+```{r}
+Paths_524 %>% 
+  summarise(AverageLength = mean(Length)) %>%
+  mutate(Node = "524") %>%
+  rbind(Paths_957 %>%
+          summarise(AverageLength = mean(Length)) %>%
+          mutate(Node = "957")
+        ) %>%
+  arrange(AverageLength)
+
+```
+
+Node 524 has a much lower average path length than node 957. In conclusion, it seems that node 524 from the DBLP1 dataset is an Erdo-like node, and it seems that co-authorship graphs share the characterisitic of having well-connected central nodes in them.
