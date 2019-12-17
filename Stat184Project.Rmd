@@ -19,10 +19,7 @@ library(igraph)
 DBLP1 <- read.table("DBLP1.txt", sep = '\t',header = FALSE)
 DBLP2 <- read.table("DBLP2.txt", sep = '\t',header = FALSE)
 
-print("--- DBLP1 ---")
 glimpse(DBLP1)
-
-print("--- DBLP2 ---")
 glimpse(DBLP2)
 ```
 

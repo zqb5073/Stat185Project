@@ -373,6 +373,19 @@ summary {
 
 <div id="finding-erdos-like-researchers-data-science-co-authorhip-graphs" class="section level1">
 <h1>Finding Erdos-like Researchers Data Science Co-authorhip Graphs</h1>
+<pre class="r"><code>DBLP1 &lt;- read.table(&quot;DBLP1.txt&quot;, sep = '\t',header = FALSE)
+DBLP2 &lt;- read.table(&quot;DBLP2.txt&quot;, sep = '\t',header = FALSE)
+
+glimpse(DBLP1)</code></pre>
+<pre><code>## Observations: 136,062
+## Variables: 2
+## $ V1 &lt;int&gt; 1225, 3245, 10889, 3, 13116, 26, 108, 5016, 8595, 12776, 1280…
+## $ V2 &lt;int&gt; 1, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3…</code></pre>
+<pre class="r"><code>glimpse(DBLP2)</code></pre>
+<pre><code>## Observations: 64,152
+## Variables: 2
+## $ V1 &lt;int&gt; 198, 330, 3061, 4377, 6357, 6358, 10120, 3, 278, 116, 134, 13…
+## $ V2 &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3…</code></pre>
 <p>Here we load two graph datasets, taken from <a href="https://www.cs.utexas.edu/~xmao/coauthorship">here</a>. We will be looking for what I will call “Erdos-like” nodes in the two datasets. Paul Erdos was a famous mathematician who, among his mathematical works, is well-known for having authored/co-authored many important papers with many other proilifc mathematicians. Becuase of this, if you construct a graph where the nodes are authors of math research papers and the edges indicate that two authors have co-authored a paper together, most other authors have a shortest path length to Erdos of less than 6. In this project, I will attempt to find authors of data science papers that share this Erdos-like characteristic.</p>
 <div id="r-markdown" class="section level2">
 <h2>R Markdown</h2>
